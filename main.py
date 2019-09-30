@@ -8,10 +8,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from models.basenet import BaseNet
+from models.resnet import ResNet18, ResNet34
+from models.mobilenetv2 import MobileNetV2
+from models.squeezenet import SqueezeNet
 from tqdm import tqdm
 
-
-import code
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -22,48 +24,30 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-class Net(nn.Module):
-    def __init__(self, in_ch, num_classes):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(5*5*50, 500)
-        self.fc2 = nn.Linear(500, num_classes)
-
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = x.view(-1, 5*5*50)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
-
-
-def train(args, model, device, train_loader, optimizer, epoch):
+def train(model, device, train_loader, optimizer, loss_criterion, epoch):
     model.train()
     tq = tqdm(train_loader, desc="Steps within train epoch {}:".format(epoch))
     for batch_idx, (data, target) in enumerate(tq):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        loss = loss_criterion(output, target)
         loss.backward()
         optimizer.step()
         tq.set_postfix({"loss": loss.item()})
 
 
-def test(args, model, device, test_loader):
+def test(model, device, test_loader, loss_criterion):
     model.eval()
     test_loss = 0
     correct_top_1, correct_top_5 = 0, 0
     with torch.no_grad():
-        for data, target in test_loader:
+        tq = tqdm(test_loader, desc="Steps within test:")
+        for data, target in tq:
             data, target = data.to(device), target.to(device)
             output = model(data)
             # sum up batch loss
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
+            test_loss += loss_criterion(output, target, reduction='sum').item()
             # get the probable classes
             preds = torch.topk(output, k=5)[1]
             corrects = preds.eq(target.view(-1, 1).expand_as(preds))
@@ -86,6 +70,8 @@ def test(args, model, device, test_loader):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='SVL coding task')
+    parser.add_argument('--model', type=str, required=True,
+                        help='specifies the model to use (basenet, resnet, mobnet2, sqnet))')
     parser.add_argument('--train-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -96,12 +82,8 @@ def main():
                         help='whether to perform data augmentation')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.001)')
-    parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
-                        help='SGD momentum (default: 0.5)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                        help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
 
@@ -115,15 +97,29 @@ def main():
     in_ch, num_classes = 3, 100
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model = Net(in_ch, num_classes).to(device)
+    if args.model == "basenet":
+        model = BaseNet(in_ch, num_classes)
+    elif args.model == "resnet18":
+        model = ResNet18(in_ch, num_classes)
+    elif args.model == "resnet34":
+        model = ResNet34(in_ch, num_classes)
+    elif args.model == "mobnet2":
+        model = MobileNetV2(in_ch, num_classes)
+    elif args.model == "sqnet":
+        model = SqueezeNet(in_ch, num_classes)
+    else:
+        assert False, "Unsupported base model: {}".format(args.model)
+
+    model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    loss_criterion = nn.CrossEntropyLoss()
 
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        train(model, device, train_loader, optimizer, loss_criterion, epoch)
+        test(model, device, test_loader, loss_criterion)
 
     if args.save_model:
-        torch.save(model.state_dict(), "cifar100_cnn.pt")
+        torch.save(model.state_dict(), args.model + "_cifar100.pt")
 
 
 if __name__ == '__main__':
