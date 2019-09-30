@@ -122,4 +122,4 @@ class OnTheFlyKDModel(ModelWrapper):
 
     def test_loss(self, result, labels):
         # Need to multiply to preserve correct values after the mean
-        return self.loss_criterion(result, labels) * self.args.test_batch_size
+        return self.loss_criterion(result, labels) * self.args.batch_size

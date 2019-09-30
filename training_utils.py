@@ -58,7 +58,7 @@ def load_pretrained_ckpt_if_exists(model, model_save_dir):
     """
 
     def get_epoch(x):
-        return int(x.strip(".pt").split('_')[-1])
+        return int(x.replace(".pt", '').split('_')[-1])
 
     latest_ckpt_list = \
         sorted(

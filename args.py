@@ -19,10 +19,8 @@ def get_args_parser_for_driver():
     parser = argparse.ArgumentParser(description='SVL coding task')
 
     # General training settings
-    parser.add_argument('--train-batch-size', type=int, default=64, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-                        help='input batch size for testing (default: 1000)')
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                        help='batch size (default: 64)')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--model-dir', type=str, default="../model_ckpt/",
@@ -69,10 +67,8 @@ def get_args_parser_for_cached_dataset():
 
     parser = argparse.ArgumentParser(description='Flags for cached dataset gen')
 
-    parser.add_argument('--train-batch-size', type=int, default=64, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-                        help='input batch size for testing (default: 1000)')
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                        help='batch size (default: 64)')
     parser.add_argument('--perform-data-aug', type=str2bool, default=False,
                         help='whether to perform data augmentation')
 
