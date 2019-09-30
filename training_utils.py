@@ -97,7 +97,7 @@ def perform_single_model_training(args):
 
     existing_epoch = 0
 
-    model = fetch_specified_model(args.model)
+    model = fetch_specified_model(args.base_model)
     if args.preload_weights:
         model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
 

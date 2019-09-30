@@ -76,7 +76,52 @@ def fetch_mnist_dataloaders(args):
     return train_loader, test_loader
 
 
-def fetch_cifar100_dataloaders(args):
+def fetch_cifar100_dataloaders(args, num_workers=4):
+
+    # Prepare the transforms
+    train_transform_list, test_transform_list = [], []
+
+    # Only add data augmentation to train transforms
+    if args.perform_data_aug:
+        train_transform_list = add_data_augmentation(train_transform_list)
+
+    # Add the base transformations
+    train_transform_list = extend_base_cifar100_transforms(train_transform_list)
+    test_transform_list = extend_base_cifar100_transforms(test_transform_list)
+
+    train_loader = \
+        torch.utils.data.DataLoader(
+            datasets.CIFAR100(
+                '../data',
+                train=True,
+                download=True,
+                transform=transforms.Compose(train_transform_list)
+            ),
+            batch_size=args.train_batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
+    test_loader = \
+        torch.utils.data.DataLoader(
+            datasets.CIFAR100(
+                '../data',
+                train=False,
+                transform=transforms.Compose(test_transform_list)
+            ),
+            batch_size=args.test_batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
+
+    return train_loader, test_loader
+
+
+def fetch_cifar100_efficient_kd_dataloaders(args):
+    """
+    Returns the efficient knowledge distillation dataloaders. It consists
+    of a custom dataloader which returns the image, label and the relevant
+    outputs of different models
+    """
 
     # Prepare the transforms
     train_transform_list, test_transform_list = [], []

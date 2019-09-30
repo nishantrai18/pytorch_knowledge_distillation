@@ -71,6 +71,7 @@ class OnTheFlyKDModel(ModelWrapper):
         super(OnTheFlyKDModel, self).__init__()
 
         # Init base models
+        self.args = args
         self.student = student
         self.teacher = teacher
 
@@ -120,4 +121,5 @@ class OnTheFlyKDModel(ModelWrapper):
         return self.loss_criterion(result, labels)
 
     def test_loss(self, result, labels):
-        return self.loss_criterion(result, labels)
+        # Need to multiply to preserve correct values after the mean
+        return self.loss_criterion(result, labels) * self.args.test_batch_size
