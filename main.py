@@ -1,21 +1,8 @@
 from __future__ import print_function
 
 import argparse
-import dataset_utils
-import os
 import torch
-
-import torch.nn as nn
-import torch.optim as optim
-
-from models.basenet import BaseNet
-from models.resnet import ResNet18, ResNet34
-from models.mobilenetv2 import MobileNetV2
-from models.squeezenet import SqueezeNet
-from model_utils import train_model, test_model
-
-
-MODEL_DIR = "../model_ckpt/"
+import training_utils as tu
 
 
 def str2bool(v):
@@ -44,53 +31,18 @@ def main():
                         help='learning rate (default: 0.001)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
     parser.add_argument('--notes', type=str, default="",
+                        help='Additional notes for current exp')
+    parser.add_argument('--model-dir', type=str, default="../model_ckpt/",
                         help='Additional notes for current exp')
 
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
 
-    # Only support CPU as a device
-    device = torch.device("cpu")
-
-    in_ch, num_classes = 3, 100
-    train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
-
-    if args.model == "basenet":
-        model = BaseNet(in_ch, num_classes)
-    elif args.model == "resnet18":
-        model = ResNet18(in_ch, num_classes)
-    elif args.model == "resnet34":
-        model = ResNet34(in_ch, num_classes)
-    elif args.model == "mobnet2":
-        model = MobileNetV2(in_ch, num_classes)
-    elif args.model == "sqnet":
-        model = SqueezeNet(in_ch, num_classes)
-    else:
-        assert False, "Unsupported base model: {}".format(args.model)
-
-    model = model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    train_loss_criterion = nn.CrossEntropyLoss(reduction='mean')
-    test_loss_criterion = nn.CrossEntropyLoss(reduction='sum')
-
-    for epoch in range(1, args.epochs + 1):
-        train_model(model, device, train_loader, optimizer, train_loss_criterion, epoch)
-        test_model(model, device, test_loader, test_loss_criterion, ks=[1, 3, 5])
-
-        # Save model during each epoch
-        if args.save_model:
-            torch.save(
-                model,
-                os.path.join(
-                    MODEL_DIR,
-                    args.model + "_" + args.notes,
-                    "cifar100_" + str(epoch) + ".pt"
-                )
-            )
+    tu.perform_single_model_training(args)
 
 
 if __name__ == '__main__':
