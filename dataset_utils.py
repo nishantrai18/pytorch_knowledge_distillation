@@ -9,7 +9,7 @@ from torchvision import datasets, transforms
 def add_data_augmentation(transform_list):
     # Add randomized cropping
     transform_list.append(
-        transforms.RandomResizedCrop((32, 32), scale=(0.9, 1.0), ratio=(0.98, 1.02))
+        transforms.RandomResizedCrop((32, 32), scale=(0.8, 1.0), ratio=(0.98, 1.02))
     )
     # Add random flipping
     transform_list.append(transforms.RandomHorizontalFlip())
@@ -58,7 +58,8 @@ def fetch_mnist_dataloaders(args):
                 transform=transforms.Compose(train_transform_list)
             ),
             batch_size=args.train_batch_size,
-            shuffle=True
+            shuffle=True,
+            num_workers=4
         )
     test_loader = \
         torch.utils.data.DataLoader(
@@ -68,7 +69,8 @@ def fetch_mnist_dataloaders(args):
                 transform=transforms.Compose(test_transform_list)
             ),
             batch_size=args.test_batch_size,
-            shuffle=True
+            shuffle=True,
+            num_workers=4
         )
 
     return train_loader, test_loader
@@ -96,7 +98,8 @@ def fetch_cifar100_dataloaders(args):
                 transform=transforms.Compose(train_transform_list)
             ),
             batch_size=args.train_batch_size,
-            shuffle=True
+            shuffle=True,
+            num_workers=4
         )
     test_loader = \
         torch.utils.data.DataLoader(
@@ -106,7 +109,8 @@ def fetch_cifar100_dataloaders(args):
                 transform=transforms.Compose(test_transform_list)
             ),
             batch_size=args.test_batch_size,
-            shuffle=True
+            shuffle=True,
+            num_workers=4
         )
 
     return train_loader, test_loader

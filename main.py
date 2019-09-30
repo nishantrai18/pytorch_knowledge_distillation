@@ -11,6 +11,8 @@ import torch.optim as optim
 from tqdm import tqdm
 
 
+import code
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
@@ -55,29 +57,35 @@ def train(args, model, device, train_loader, optimizer, epoch):
 def test(args, model, device, test_loader):
     model.eval()
     test_loss = 0
-    correct = 0
+    correct_top_1, correct_top_5 = 0, 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             # sum up batch loss
             test_loss += F.nll_loss(output, target, reduction='sum').item()
-            # get the index of the max log-probability
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            # get the probable classes
+            preds = torch.topk(output, k=5)[1]
+            corrects = preds.eq(target.view(-1, 1).expand_as(preds))
+            correct_top_1 += corrects[:, :1].sum().item()
+            correct_top_5 += corrects[:, :5].sum().item()
 
     test_loss /= len(test_loader.dataset)
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    print(
+        "\nTest set: Average loss: {:.4f}, Accuracy Top1: {}/{} ({:.1f}%), Accuracy Top5: {}/{} ({:.1f}%)\n".format(
+            test_loss,
+            correct_top_1, len(test_loader.dataset),
+            100. * correct_top_1 / len(test_loader.dataset),
+            correct_top_5, len(test_loader.dataset),
+            100. * correct_top_5 / len(test_loader.dataset)
+        )
+    )
 
 
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='SVL coding task')
-    parser.add_argument('--dataset', type=str, default="cifar100",
-                        help='Specifies the dataset (mnist, cifar100 - default)')
     parser.add_argument('--train-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -104,17 +112,8 @@ def main():
     # Only support CPU as a device
     device = torch.device("cpu")
 
-    # Set the relevant information based on the dataset
-    if args.dataset == "mnist":
-        in_ch, num_classes = 1, 10
-        dataset_loader = dataset_utils.fetch_mnist_dataloaders
-    elif args.dataset == "cifar100":
-        in_ch, num_classes = 3, 100
-        dataset_loader = dataset_utils.fetch_cifar100_dataloaders
-    else:
-        assert False, "Incorrect dataset {} provided".format(args.dataset)
-
-    train_loader, test_loader = dataset_loader(args)
+    in_ch, num_classes = 3, 100
+    train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
     model = Net(in_ch, num_classes).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -124,7 +123,7 @@ def main():
         test(args, model, device, test_loader)
 
     if args.save_model:
-        torch.save(model.state_dict(), args.dataset + "_cnn.pt")
+        torch.save(model.state_dict(), "cifar100_cnn.pt")
 
 
 if __name__ == '__main__':
