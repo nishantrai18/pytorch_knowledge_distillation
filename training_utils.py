@@ -83,7 +83,7 @@ def load_pretrained_ckpt_if_exists(model, model_save_dir):
     return model, epoch
 
 
-def perform_training(model, train_loader, test_loader, model_save_dir, args):
+def perform_training(model, train_loader, test_loader, model_save_dir, init_epoch, args):
     """
     General utility to perform training of the passed model
     """
@@ -91,7 +91,7 @@ def perform_training(model, train_loader, test_loader, model_save_dir, args):
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     model_trainer = ModelTrainer(model, DEVICE, train_loader, test_loader, optimizer)
 
-    for epoch in range(args.epochs):
+    for epoch in range(init_epoch, args.epochs):
         # Perform train and test step
         model_trainer.train_step(epoch)
         model_trainer.test_step(ks=[1, 3, 5])
@@ -115,7 +115,6 @@ def perform_single_model_training(args):
         os.makedirs(model_save_dir)
 
     existing_epoch = 0
-
     model = fetch_specified_model(args.base_model)
     if args.preload_weights:
         model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
@@ -123,7 +122,7 @@ def perform_single_model_training(args):
     model = model.to(DEVICE)
     model = IndividualModel(model)
 
-    perform_training(model, train_loader, test_loader, model_save_dir, args)
+    perform_training(model, train_loader, test_loader, model_save_dir, existing_epoch, args)
 
 
 def perform_knowledge_distillation_on_the_fly(args):
@@ -144,7 +143,7 @@ def perform_knowledge_distillation_on_the_fly(args):
     teacher = fetch_pretrained_model(args.teacher_ckpt_pth).to(DEVICE)
     model = OnTheFlyKDModel(student, teacher, args)
 
-    perform_training(model, train_loader, test_loader, model_save_dir, args)
+    perform_training(model, train_loader, test_loader, model_save_dir, 0, args)
 
 
 def perform_cached_knowledge_distillation(args):
@@ -161,4 +160,4 @@ def perform_cached_knowledge_distillation(args):
     student = fetch_specified_model(args.student_model).to(DEVICE)
     student = IndividualModel(student)
 
-    perform_training(student, train_loader, test_loader, model_save_dir, args)
+    perform_training(student, train_loader, test_loader, model_save_dir, 0, args)
