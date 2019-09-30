@@ -6,14 +6,13 @@ import os
 import torch
 
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 
 from models.basenet import BaseNet
 from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
 from models.squeezenet import SqueezeNet
-from tqdm import tqdm
+from model_utils import train_model, test_model
 
 
 MODEL_DIR = "../model_ckpt/"
@@ -26,49 +25,6 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-def train(model, device, train_loader, optimizer, loss_criterion, epoch):
-    model.train()
-    tq = tqdm(train_loader, desc="Steps within train epoch {}:".format(epoch))
-    for batch_idx, (data, target) in enumerate(tq):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = loss_criterion(output, target)
-        loss.backward()
-        optimizer.step()
-        tq.set_postfix({"loss": loss.item()})
-
-
-def test(model, device, test_loader, loss_criterion):
-    model.eval()
-    test_loss = 0
-    correct_top_1, correct_top_5 = 0, 0
-    with torch.no_grad():
-        tq = tqdm(test_loader, desc="Steps within test:")
-        for data, target in tq:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            # sum up batch loss
-            test_loss += loss_criterion(output, target).item()
-            # get the probable classes
-            preds = torch.topk(output, k=5)[1]
-            corrects = preds.eq(target.view(-1, 1).expand_as(preds))
-            correct_top_1 += corrects[:, :1].sum().item()
-            correct_top_5 += corrects[:, :5].sum().item()
-
-    test_loss /= len(test_loader.dataset)
-
-    print(
-        "\nTest set: Average loss: {:.4f}, Accuracy Top1: {}/{} ({:.1f}%), Accuracy Top5: {}/{} ({:.1f}%)\n".format(
-            test_loss,
-            correct_top_1, len(test_loader.dataset),
-            100. * correct_top_1 / len(test_loader.dataset),
-            correct_top_5, len(test_loader.dataset),
-            100. * correct_top_5 / len(test_loader.dataset)
-        )
-    )
 
 
 def main():
@@ -122,8 +78,8 @@ def main():
     test_loss_criterion = nn.CrossEntropyLoss(reduction='sum')
 
     for epoch in range(1, args.epochs + 1):
-        train(model, device, train_loader, optimizer, train_loss_criterion, epoch)
-        test(model, device, test_loader, test_loss_criterion)
+        train_model(model, device, train_loader, optimizer, train_loss_criterion, epoch)
+        test_model(model, device, test_loader, test_loss_criterion, ks=[1, 3, 5])
 
         # Save model during each epoch
         if args.save_model:
