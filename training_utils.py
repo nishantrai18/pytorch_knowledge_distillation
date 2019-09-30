@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from model_wrapper import IndividualModel, OnTheFlyKDModel
+from kd_module import IndividualModel, OnTheFlyKDModel, CachedKDModel
 from models.basenet import BaseNet
 from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
@@ -159,5 +159,6 @@ def perform_cached_knowledge_distillation(args):
 
     student = fetch_specified_model(args.student_model).to(DEVICE)
     student = IndividualModel(student)
+    model = CachedKDModel(student, ["sqnet"], args)
 
-    perform_training(student, train_loader, test_loader, model_save_dir, 0, args)
+    perform_training(model, train_loader, test_loader, model_save_dir, 0, args)

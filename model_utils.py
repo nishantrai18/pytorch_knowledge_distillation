@@ -78,7 +78,7 @@ class ModelTrainer(object):
         with torch.no_grad():
             tq = tqdm(self.test_loader, desc="Steps within test:")
             for data, target in tq:
-                data, target = data.to(self.device), target.to(self.device)
+                data, target = move_to_device(data, self.device), target.to(self.device)
                 output = self.model(data)
                 # sum up batch loss
                 test_loss += self.model.test_loss(output, target).item()

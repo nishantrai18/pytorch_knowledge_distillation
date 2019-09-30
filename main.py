@@ -16,8 +16,10 @@ def main():
 
     if args.task == "base_tr":
         tu.perform_single_model_training(args)
-    elif args.task == "kd":
-        tu.perform_knowledge_distillation(args)
+    elif args.task == "kd_otf":
+        tu.perform_knowledge_distillation_on_the_fly(args)
+    elif args.task == "kd_cached":
+        tu.perform_cached_knowledge_distillation(args)
     else:
         print("Performing nothing")
 

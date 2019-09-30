@@ -129,6 +129,7 @@ class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
         # Naming student results without prefix for compatibility
         return {
             "outs": student_res["outs"],
+            "preds": student_res["preds"],
             "teacher_outs": teacher_res["outs"]
         }
 
@@ -159,9 +160,12 @@ class CachedKDModel(KnowledgeDistillModelWrapper):
     def forward(self, x):
         student_res = self.student(x["data"])
         # Compute the average output for all the teachers
-        teacher_res = torch.mean(torch.stack([v for k, v in x.items() if 'model_out_' in k]))
+        valid_teacher_res = \
+            [v for k, v in x.items() if 'model_out_' in k and k.replace('model_out_', '') in self.teachers]
+        teacher_res = torch.mean(torch.stack(valid_teacher_res), dim=0)
 
         return {
             "outs": student_res["outs"],
+            "preds": student_res["preds"],
             "teacher_outs": teacher_res
         }
