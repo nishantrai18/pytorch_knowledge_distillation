@@ -3,6 +3,7 @@ Implementation of Knowledge Distillation module
 Wraps base student and pre-trained teacher networks
 """
 
+import os
 import torch
 
 import torch.nn as nn
@@ -20,8 +21,11 @@ class ModelWrapper(nn.Module, ABC):
     utilize the utility functions
     """
 
-    def __init__(self):
+    def __init__(self, name):
         super(ModelWrapper, self).__init__()
+        self.base_log_dir = "../logs/"
+        self.name = name
+        self.log_dir = os.path.join(self.base_log_dir, self.name)
 
     @abstractmethod
     def train_loss(self, result, labels):
@@ -34,8 +38,8 @@ class ModelWrapper(nn.Module, ABC):
 
 class IndividualModel(ModelWrapper):
 
-    def __init__(self, base_model):
-        super(IndividualModel, self).__init__()
+    def __init__(self, base_model, name):
+        super(IndividualModel, self).__init__("indmod_" + name)
 
         self.model = base_model
         self.train_loss_criterion = nn.CrossEntropyLoss(reduction='mean')
@@ -59,8 +63,8 @@ class IndividualModel(ModelWrapper):
 
 class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
 
-    def __init__(self, args):
-        super(KnowledgeDistillModelWrapper, self).__init__()
+    def __init__(self, args, name):
+        super(KnowledgeDistillModelWrapper, self).__init__("kd_" + name)
 
         self.args = args
 
@@ -103,7 +107,7 @@ class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
     Implementation of on the fly knowledge distill model
     """
 
-    def __init__(self, student, teacher, args):
+    def __init__(self, student, teacher, args, name):
         """
         Init KD object. Note that the models passed should be instances
         of ModelWrapper
@@ -112,7 +116,7 @@ class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
         :param teacher: Pre-trained teacher model (Frozen)
         """
 
-        super(OnTheFlyKDModel, self).__init__(args)
+        super(OnTheFlyKDModel, self).__init__(args, "otf_" + name)
 
         # Init base models
         self.student = student
@@ -142,7 +146,7 @@ class CachedKDModel(KnowledgeDistillModelWrapper):
     should be used in conjunction with this
     """
 
-    def __init__(self, student, teachers, args):
+    def __init__(self, student, teachers, args, name):
         """
         Init KD object. Note that the models passed should be instances
         of ModelWrapper
@@ -151,7 +155,7 @@ class CachedKDModel(KnowledgeDistillModelWrapper):
         :param teachers: Names of teachers to use
         """
 
-        super(CachedKDModel, self).__init__(args)
+        super(CachedKDModel, self).__init__(args, "cached_" + name)
 
         # Init base models
         self.student = student

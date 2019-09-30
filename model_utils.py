@@ -1,6 +1,9 @@
 import os
 import torch
 
+import metric_utils as mu
+
+from kd_module import ModelWrapper
 from tqdm import tqdm
 
 
@@ -34,17 +37,20 @@ class ModelTrainer(object):
         """
         Init class for Model Trainer
 
-        :param model: Model to train
+        :param model: Model to train - should be instance of ModelWrapper
         :param train_loader: Train set data loader
         :param test_loader: Test set data loader
         :param optimizer: Optimizer to use for training
         """
+
+        assert isinstance(model, ModelWrapper)
 
         self.model = model
         self.device = device
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.optimizer = optimizer
+        self.metric_logger = mu.MetricTracker(self.model.log_dir)
 
     def train_step(self, epoch):
         """
@@ -52,17 +58,27 @@ class ModelTrainer(object):
         training
         """
 
+        self.metric_logger.new_epoch("train")
+
         self.model.train()
         tq = tqdm(self.train_loader, desc="Steps within train epoch {}:".format(epoch))
 
         for batch_idx, (data, target) in enumerate(tq):
             data, target = move_to_device(data, self.device), target.to(self.device)
+
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.model.train_loss(output, target)
+
+            # Batch size can be different for last step
+            self.metric_logger.update_batch_size(data.shape[0])
+            self.metric_logger.update_losses(loss=loss)
+            self.metric_logger.update_metrics(output, target)
+
             loss.backward()
             self.optimizer.step()
-            tq.set_postfix({"loss": loss.item()})
+
+            tq.set_postfix(**self.metric_logger.fetch_tqdm_postfix_metrics())
 
     def test_step(self, ks=[1, 5]):
         """

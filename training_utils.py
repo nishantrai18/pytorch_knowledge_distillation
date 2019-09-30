@@ -110,7 +110,8 @@ def perform_single_model_training(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.base_model + "_" + args.notes)
+    model_name = args.base_model + "_" + args.notes
+    model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
@@ -120,7 +121,7 @@ def perform_single_model_training(args):
         model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
 
     model = model.to(DEVICE)
-    model = IndividualModel(model)
+    model = IndividualModel(model, model_name)
 
     perform_training(model, train_loader, test_loader, model_save_dir, existing_epoch, args)
 
@@ -134,14 +135,16 @@ def perform_knowledge_distillation_on_the_fly(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.student_model + "_otf_kd_" + args.notes)
+    student_model_name = args.student_model
+    model_name = args.student_model + "_otf_kd_" + args.notes
+    model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
     student = fetch_specified_model(args.student_model).to(DEVICE)
-    student = IndividualModel(student)
+    student = IndividualModel(student, student_model_name)
     teacher = fetch_pretrained_model(args.teacher_ckpt_pth).to(DEVICE)
-    model = OnTheFlyKDModel(student, teacher, args)
+    model = OnTheFlyKDModel(student, teacher, args, model_name)
 
     perform_training(model, train_loader, test_loader, model_save_dir, 0, args)
 
@@ -153,7 +156,8 @@ def perform_cached_knowledge_distillation(args):
 
     train_loader, test_loader = cached_dataset.fetch_cifar100_efficient_kd_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.student_model + "_cached_kd_" + args.notes)
+    model_name = args.student_model + "_cached_kd_" + args.notes
+    model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
