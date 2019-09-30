@@ -20,14 +20,16 @@ class BasicBlock(nn.Module):
 
     expansion = 1
 
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, in_channels, out_channels, act_fact, stride=1):
         super().__init__()
+
+        self.act_fact = act_fact
 
         # residual function
         self.residual_function = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            self.act_fact(),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels)
         )
@@ -44,12 +46,12 @@ class BasicBlock(nn.Module):
             )
 
     def forward(self, x):
-        return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
+        return self.act_fact()(self.residual_function(x) + self.shortcut(x))
 
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, num_block, in_ch, num_classes):
+    def __init__(self, block, num_block, in_ch, num_classes, act_fact):
         super().__init__()
 
         self.in_channels = 16
@@ -57,7 +59,7 @@ class ResNet(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_ch, 16, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True))
+            act_fact())
         # we use a different inputsize than the original paper
         # so conv2_x's stride is 1
         self.conv2_x = self._make_layer(block, 16, num_block[0], 1)
@@ -105,13 +107,13 @@ class ResNet(nn.Module):
         return output
 
 
-def ResNet18(in_ch, num_classes):
+def ResNet18(in_ch, num_classes, act_fact):
     """ return a ResNet 18 object
     """
-    return ResNet(BasicBlock, [2, 2, 2, 2], in_ch, num_classes)
+    return ResNet(BasicBlock, [2, 2, 2, 2], in_ch, num_classes, act_fact)
 
 
-def ResNet34(in_ch, num_classes):
+def ResNet34(in_ch, num_classes, act_fact):
     """ return a ResNet 34 object
     """
-    return ResNet(BasicBlock, [3, 4, 6, 3], in_ch, num_classes)
+    return ResNet(BasicBlock, [3, 4, 6, 3], in_ch, num_classes, act_fact)

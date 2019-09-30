@@ -4,7 +4,7 @@ import glob
 import os
 import torch
 
-import torch.nn as nn
+import kd_module as kdm
 import torch.optim as optim
 
 from kd_module import IndividualModel, OnTheFlyKDModel, CachedKDModel
@@ -22,24 +22,25 @@ from model_utils import ModelTrainer
 DEVICE = torch.device("cpu")
 
 
-def fetch_specified_model(model_name):
+def fetch_specified_model(model_name, activation):
     """
     Inits and returns the specified model
     """
 
     # Specific hard-coding for CIFAR100
     in_ch, num_classes = 3, 100
+    act_fact = kdm.get_activation_factory(activation)
 
     if model_name == "basenet":
-        model = BaseNet(in_ch, num_classes)
+        model = BaseNet(in_ch, num_classes, act_fact)
     elif model_name == "resnet18":
-        model = ResNet18(in_ch, num_classes)
+        model = ResNet18(in_ch, num_classes, act_fact)
     elif model_name == "resnet34":
-        model = ResNet34(in_ch, num_classes)
+        model = ResNet34(in_ch, num_classes, act_fact)
     elif model_name == "mobnet2":
-        model = MobileNetV2(in_ch, num_classes)
+        model = MobileNetV2(in_ch, num_classes, act_fact)
     elif model_name == "sqnet":
-        model = SqueezeNet(in_ch, num_classes)
+        model = SqueezeNet(in_ch, num_classes, act_fact)
     else:
         assert False, "Unsupported base model: {}".format(model_name)
     
@@ -110,13 +111,13 @@ def perform_single_model_training(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_name = args.base_model + "_" + args.notes
+    model_name = args.base_model + "_" + args.activation + "_" + args.notes
     model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
     existing_epoch = 0
-    model = fetch_specified_model(args.base_model)
+    model = fetch_specified_model(args.base_model, args.activation)
     if args.preload_weights:
         model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
 
@@ -135,13 +136,13 @@ def perform_knowledge_distillation_on_the_fly(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    student_model_name = args.student_model
-    model_name = args.student_model + "_otf_kd_" + args.notes
+    student_model_name = args.student_model + "_" + args.activation
+    model_name = args.student_model + "_" + args.activation + "_otf_kd_" + args.notes
     model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
-    student = fetch_specified_model(args.student_model).to(DEVICE)
+    student = fetch_specified_model(args.student_model, args.activation).to(DEVICE)
     student = IndividualModel(student, student_model_name)
     teacher = fetch_pretrained_model(args.teacher_ckpt_pth).to(DEVICE)
     model = OnTheFlyKDModel(student, teacher, args, model_name)
@@ -156,13 +157,13 @@ def perform_cached_knowledge_distillation(args):
 
     train_loader, test_loader = cached_dataset.fetch_cifar100_efficient_kd_dataloaders(args)
 
-    model_name = args.student_model + "_cached_kd_" + args.notes
+    model_name = args.student_model + "_" + args.activation + "_cached_kd_" + args.notes
     model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
-    student = fetch_specified_model(args.student_model).to(DEVICE)
-    student = IndividualModel(student)
-    model = CachedKDModel(student, ["sqnet"], args)
+    student = fetch_specified_model(args.student_model, args.activation).to(DEVICE)
+    student = IndividualModel(student, name=args.student_model)
+    model = CachedKDModel(student, ["sqnet"], args, model_name)
 
     perform_training(model, train_loader, test_loader, model_save_dir, 0, args)

@@ -10,6 +10,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from abc import ABC, abstractmethod
+from swish.swish import Swish
+
+
+def get_activation_factory(activation):
+    def relu_factory():
+        return torch.nn.ReLU()
+
+    def swish_factory():
+        return Swish()
+
+    if activation == "relu":
+        return relu_factory
+    elif activation == "swish":
+        return swish_factory
+    else:
+        return None
 
 
 class ModelWrapper(nn.Module, ABC):

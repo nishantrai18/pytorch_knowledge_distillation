@@ -52,6 +52,8 @@ class ModelTrainer(object):
         self.optimizer = optimizer
         self.metric_logger = mu.MetricTracker(self.model.log_dir)
 
+        print("Training model {}".format(self.model.name))
+
     def train_step(self, epoch):
         """
         Helper function to schedule training of the specified model. Performs one epoch of

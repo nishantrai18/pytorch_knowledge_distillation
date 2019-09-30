@@ -14,24 +14,27 @@ import torch.nn as nn
 
 class Fire(nn.Module):
 
-    def __init__(self, in_channel, out_channel, squzee_channel):
+    def __init__(self, in_channel, out_channel, squzee_channel, act_fact):
         super().__init__()
+
+        self.act_fact = act_fact
+
         self.squeeze = nn.Sequential(
             nn.Conv2d(in_channel, squzee_channel, 1),
             nn.BatchNorm2d(squzee_channel),
-            nn.ReLU(inplace=True)
+            self.act_fact()
         )
 
         self.expand_1x1 = nn.Sequential(
             nn.Conv2d(squzee_channel, int(out_channel / 2), 1),
             nn.BatchNorm2d(int(out_channel / 2)),
-            nn.ReLU(inplace=True)
+            self.act_fact()
         )
 
         self.expand_3x3 = nn.Sequential(
             nn.Conv2d(squzee_channel, int(out_channel / 2), 3, padding=1),
             nn.BatchNorm2d(int(out_channel / 2)),
-            nn.ReLU(inplace=True)
+            self.act_fact()
         )
 
     def forward(self, x):
@@ -47,23 +50,26 @@ class Fire(nn.Module):
 class SqueezeNet(nn.Module):
     """mobile net with simple bypass"""
 
-    def __init__(self, in_ch, num_classes):
+    def __init__(self, in_ch, num_classes, act_fact):
         super().__init__()
+
+        self.act_fact = act_fact
+
         self.stem = nn.Sequential(
             nn.Conv2d(in_ch, 24, 3, padding=1),
             nn.BatchNorm2d(24),
-            nn.ReLU(inplace=True),
+            self.act_fact(),
             nn.MaxPool2d(2, 2)
         )
 
-        self.fire2 = Fire(24, 32, 8)
-        self.fire3 = Fire(32, 32, 8)
-        self.fire4 = Fire(32, 64, 16)
-        self.fire5 = Fire(64, 64, 16)
-        self.fire6 = Fire(64, 96, 24)
-        self.fire7 = Fire(96, 96, 24)
-        self.fire8 = Fire(96, 128, 32)
-        self.fire9 = Fire(128, 128, 32)
+        self.fire2 = Fire(24, 32, 8, act_fact)
+        self.fire3 = Fire(32, 32, 8, act_fact)
+        self.fire4 = Fire(32, 64, 16, act_fact)
+        self.fire5 = Fire(64, 64, 16, act_fact)
+        self.fire6 = Fire(64, 96, 24, act_fact)
+        self.fire7 = Fire(96, 96, 24, act_fact)
+        self.fire8 = Fire(96, 128, 32, act_fact)
+        self.fire9 = Fire(128, 128, 32, act_fact)
 
         self.conv10 = nn.Conv2d(128, num_classes, 1)
         self.avg = nn.AdaptiveAvgPool2d(1)
@@ -92,5 +98,5 @@ class SqueezeNet(nn.Module):
         return x
 
 
-def squeezenet(in_ch, num_classes):
-    return SqueezeNet(in_ch, num_classes)
+def squeezenet(in_ch, num_classes, act_fact):
+    return SqueezeNet(in_ch, num_classes, act_fact)

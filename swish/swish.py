@@ -61,6 +61,10 @@ class TestSwishGrad(unittest.TestCase):
 
 
 class TestBasicSwishTraining(unittest.TestCase):
+    """
+    Tests whether Swish() is able to learn the beta appropriately
+    """
+
     @classmethod
     def setUpClass(self):
         self.device = torch.device("cpu")

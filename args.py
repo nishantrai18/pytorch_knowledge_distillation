@@ -37,6 +37,8 @@ def get_args_parser_for_driver():
                         help='learning rate (default: 0.001)')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
+    parser.add_argument('--activation', type=str, default="relu",
+                        help='Denotes the activation function to use (relu, swish)')
 
     # Flag specifying task to perform
     parser.add_argument('--task', type=str, required=True,
