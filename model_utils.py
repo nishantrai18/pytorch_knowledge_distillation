@@ -66,7 +66,7 @@ class ModelTrainer(object):
                 # sum up batch loss
                 test_loss += self.model.test_loss(output, target).item()
                 # get the probable classes
-                preds = torch.topk(output, k=5)[1]
+                preds = torch.topk(output["preds"], k=max(ks))[1]
                 corrects = preds.eq(target.view(-1, 1).expand_as(preds))
                 for k in ks:
                     correct_top_ks[k] += corrects[:, :k].sum().item()

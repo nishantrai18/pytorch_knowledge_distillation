@@ -91,7 +91,7 @@ def perform_single_model_training(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.model + "_" + args.notes)
+    model_save_dir = os.path.join(args.model_dir, args.base_model + "_" + args.notes)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
@@ -126,12 +126,13 @@ def perform_knowledge_distillation(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.model + "_kd_" + args.notes)
+    model_save_dir = os.path.join(args.model_dir, args.student_model + "_kd_" + args.notes)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
-    student = fetch_specified_model(args.student_model)
-    teacher = fetch_pretrained_model(args.teacher_ckpt_pth)
+    student = fetch_specified_model(args.student_model).to(DEVICE)
+    student = IndividualModel(student)
+    teacher = fetch_pretrained_model(args.teacher_ckpt_pth).to(DEVICE)
 
     model = OnTheFlyKDModel(student, teacher, args)
     model = model.to(DEVICE)

@@ -8,10 +8,31 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# TODO: Add base class to dedupe KD code
+from abc import ABC, abstractmethod
 
 
-class IndividualModel(nn.Module):
+class ModelWrapper(nn.Module, ABC):
+    """
+    Base class for Model Wrapper. This base class is used
+    to interact with the other urility functions present
+    in other files.
+    All new models should be based on top it in order to
+    utilize the utility functions
+    """
+
+    def __init__(self):
+        super(ModelWrapper, self).__init__()
+
+    @abstractmethod
+    def train_loss(self, result, labels):
+        pass
+
+    @abstractmethod
+    def test_loss(self, result, labels):
+        pass
+
+
+class IndividualModel(ModelWrapper):
 
     def __init__(self, base_model):
         super(IndividualModel, self).__init__()
@@ -36,14 +57,15 @@ class IndividualModel(nn.Module):
         return self.test_loss_criterion(result["outs"], labels)
 
 
-class OnTheFlyKDModel(nn.Module):
+class OnTheFlyKDModel(ModelWrapper):
 
     def __init__(self, student, teacher, args):
         """
-        Init KD object
+        Init KD object. Note that the models passed should be instances
+        of ModelWrapper
 
         :param student: Base student model to be trained
-        :param teacher: Pre-trained teacher model
+        :param teacher: Pre-trained teacher model (Frozen)
         """
 
         super(OnTheFlyKDModel, self).__init__()
@@ -61,12 +83,15 @@ class OnTheFlyKDModel(nn.Module):
             param.requires_grad = False
 
     def forward(self, x):
-        student_outs = self.student(x)
-        teacher_outs = self.teacher(x)
+        student_res = self.student(x)
+        teacher_res = self.teacher(x)
 
+        # Naming student results without prefix for compatibility
         return {
-            "student_outs": student_outs,
-            "teacher_outs": teacher_outs,
+            "outs": student_res["outs"],
+            "preds": student_res["preds"],
+            "teacher_outs": teacher_res["outs"],
+            "teacher_preds": teacher_res["preds"],
         }
 
     def loss_criterion(self, result, labels):
@@ -81,10 +106,10 @@ class OnTheFlyKDModel(nn.Module):
         t = self.temperature
 
         kd_loss = nn.KLDivLoss()(
-            F.log_softmax(result["student_outs"] / t, dim=1),
+            F.log_softmax(result["outs"] / t, dim=1),
             F.softmax(result["teacher_outs"] / t, dim=1)
         )
-        gt_loss = F.cross_entropy(result["student_outs"], labels)
+        gt_loss = F.cross_entropy(result["outs"], labels)
 
         # Weigh kd_loss with t^2 to preserve scale of gradients
         final_loss = (kd_loss * w * t * t) + (gt_loss * (1 - w))
