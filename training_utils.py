@@ -6,12 +6,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from kd_module import OnTheFlyKnowledgeDistiller
+from kd_module import IndividualModel, OnTheFlyKDModel
 from models.basenet import BaseNet
 from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
 from models.squeezenet import SqueezeNet
-from model_utils import train_model, test_model
+from model_utils import ModelTrainer
+
+
+# Script constants
+##################
+
+# Only support CPU as a device
+DEVICE = torch.device("cpu")
 
 
 def fetch_specified_model(model_name):
@@ -82,33 +89,32 @@ def perform_single_model_training(args):
     :param args: Details regarding the base model and training outline
     """
 
-    # Only support CPU as a device
-    device = torch.device("cpu")
-
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
     model_save_dir = os.path.join(args.model_dir, args.model + "_" + args.notes)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
-    model = fetch_specified_model(args.model)
-    model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
-    model = model.to(device)
+    existing_epoch = 0
 
+    model = fetch_specified_model(args.model)
+    if args.preload_weights:
+        model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
+
+    model = model.to(DEVICE)
+
+    wrapped_model = IndividualModel(model)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    train_loss_criterion = nn.CrossEntropyLoss(reduction='mean')
-    test_loss_criterion = nn.CrossEntropyLoss(reduction='sum')
+    model_trainer = ModelTrainer(wrapped_model, DEVICE, train_loader, test_loader, optimizer)
 
     for epoch in range(existing_epoch, args.epochs):
-        train_model(model, device, train_loader, optimizer, train_loss_criterion, epoch)
-        test_model(model, device, test_loader, test_loss_criterion, ks=[1, 3, 5])
+        # Perform train and test step
+        model_trainer.train_step(epoch)
+        model_trainer.test_step(ks=[1, 3, 5])
 
         # Save model during each epoch
         if args.save_model:
-            torch.save(
-                model,
-                os.path.join(model_save_dir, "cifar100_" + str(epoch) + ".pt")
-            )
+            model_trainer.save_model(model_save_dir, epoch)
 
 
 def perform_knowledge_distillation(args):
@@ -118,30 +124,26 @@ def perform_knowledge_distillation(args):
     :param args: Details regarding the base model and training outline
     """
 
-    # Only support CPU as a device
-    device = torch.device("cpu")
-
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.model + "_" + args.notes)
+    model_save_dir = os.path.join(args.model_dir, args.model + "_kd_" + args.notes)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
     student = fetch_specified_model(args.student_model)
     teacher = fetch_pretrained_model(args.teacher_ckpt_pth)
 
-    model = OnTheFlyKnowledgeDistiller(student, teacher, args)
-    model = model.to(device)
+    model = OnTheFlyKDModel(student, teacher, args)
+    model = model.to(DEVICE)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    model_trainer = ModelTrainer(model, DEVICE, train_loader, test_loader, optimizer)
 
-    for epoch in range(1, args.epochs + 1):
-        train_model(model, device, train_loader, optimizer, train_loss_criterion, epoch)
-        test_model(model, device, test_loader, test_loss_criterion, ks=[1, 3, 5])
+    for epoch in range(args.epochs):
+        # Perform train and test step
+        model_trainer.train_step(epoch)
+        model_trainer.test_step(ks=[1, 3, 5])
 
         # Save model during each epoch
         if args.save_model:
-            torch.save(
-                model,
-                os.path.join(model_save_dir, "cifar100_" + str(epoch) + ".pt")
-            )
+            model_trainer.save_model(model_save_dir, epoch)

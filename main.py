@@ -14,7 +14,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main():
+def get_args_parser():
     # Training settings
     parser = argparse.ArgumentParser(description='SVL coding task')
     parser.add_argument('--model', type=str, required=True,
@@ -27,6 +27,8 @@ def main():
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--perform-data-aug', type=str2bool, default=False,
                         help='whether to perform data augmentation')
+    parser.add_argument('--preload-weights', type=str2bool, default=False,
+                        help='whether to preload if weights exist')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.001)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -38,6 +40,12 @@ def main():
     parser.add_argument('--model-dir', type=str, default="../model_ckpt/",
                         help='Additional notes for current exp')
 
+    return parser
+
+
+def main():
+
+    parser = get_args_parser()
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)

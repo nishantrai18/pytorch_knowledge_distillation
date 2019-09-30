@@ -11,7 +11,32 @@ import torch.nn.functional as F
 # TODO: Add base class to dedupe KD code
 
 
-class OnTheFlyKnowledgeDistiller(nn.Module):
+class IndividualModel(nn.Module):
+
+    def __init__(self, base_model):
+        super(IndividualModel, self).__init__()
+
+        self.model = base_model
+        self.train_loss_criterion = nn.CrossEntropyLoss(reduction='mean')
+        self.test_loss_criterion = nn.CrossEntropyLoss(reduction='sum')
+
+    def forward(self, x):
+        model_outs = self.model(x)
+        model_preds = F.log_softmax(model_outs, dim=1)
+
+        return {
+            "outs": model_outs,
+            "preds": model_preds
+        }
+
+    def train_loss(self, result, labels):
+        return self.train_loss_criterion(result["outs"], labels)
+
+    def test_loss(self, result, labels):
+        return self.test_loss_criterion(result["outs"], labels)
+
+
+class OnTheFlyKDModel(nn.Module):
 
     def __init__(self, student, teacher, args):
         """
@@ -21,7 +46,7 @@ class OnTheFlyKnowledgeDistiller(nn.Module):
         :param teacher: Pre-trained teacher model
         """
 
-        super(OnTheFlyKnowledgeDistiller, self).__init__()
+        super(OnTheFlyKDModel, self).__init__()
 
         # Init base models
         self.student = student
@@ -65,3 +90,9 @@ class OnTheFlyKnowledgeDistiller(nn.Module):
         final_loss = (kd_loss * w * t * t) + (gt_loss * (1 - w))
 
         return final_loss
+
+    def train_loss(self, result, labels):
+        return self.loss_criterion(result, labels)
+
+    def test_loss(self, result, labels):
+        return self.loss_criterion(result, labels)
