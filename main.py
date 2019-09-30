@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import argparse
 import dataset_utils
+import os
 import torch
 
 import torch.nn as nn
@@ -13,6 +14,9 @@ from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
 from models.squeezenet import SqueezeNet
 from tqdm import tqdm
+
+
+MODEL_DIR = "../model_ckpt/"
 
 
 def str2bool(v):
@@ -86,6 +90,8 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+    parser.add_argument('--notes', type=str, default="",
+                        help='Additional notes for current exp')
 
     args = parser.parse_args()
 
@@ -119,8 +125,16 @@ def main():
         train(model, device, train_loader, optimizer, train_loss_criterion, epoch)
         test(model, device, test_loader, test_loss_criterion)
 
-    if args.save_model:
-        torch.save(model.state_dict(), args.model + "_cifar100.pt")
+        # Save model during each epoch
+        if args.save_model:
+            torch.save(
+                model,
+                os.path.join(
+                    MODEL_DIR,
+                    args.model + "_" + args.notes,
+                    "cifar100_" + str(epoch) + ".pt"
+                )
+            )
 
 
 if __name__ == '__main__':
