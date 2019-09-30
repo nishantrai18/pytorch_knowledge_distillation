@@ -47,7 +47,7 @@ def test(model, device, test_loader, loss_criterion):
             data, target = data.to(device), target.to(device)
             output = model(data)
             # sum up batch loss
-            test_loss += loss_criterion(output, target, reduction='sum').item()
+            test_loss += loss_criterion(output, target).item()
             # get the probable classes
             preds = torch.topk(output, k=5)[1]
             corrects = preds.eq(target.view(-1, 1).expand_as(preds))
@@ -112,11 +112,12 @@ def main():
 
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    loss_criterion = nn.CrossEntropyLoss()
+    train_loss_criterion = nn.CrossEntropyLoss(reduction='mean')
+    test_loss_criterion = nn.CrossEntropyLoss(reduction='sum')
 
     for epoch in range(1, args.epochs + 1):
-        train(model, device, train_loader, optimizer, loss_criterion, epoch)
-        test(model, device, test_loader, loss_criterion)
+        train(model, device, train_loader, optimizer, train_loss_criterion, epoch)
+        test(model, device, test_loader, test_loss_criterion)
 
     if args.save_model:
         torch.save(model.state_dict(), args.model + "_cifar100.pt")

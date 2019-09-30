@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 class LinearBottleNeck(nn.Module):
 
-    def __init__(self, in_channels, out_channels, stride, t=6, class_num=100):
+    def __init__(self, in_channels, out_channels, stride, t=6):
         super().__init__()
 
         self.residual = nn.Sequential(
@@ -50,26 +50,26 @@ class MobileNetV2(nn.Module):
         super().__init__()
 
         self.pre = nn.Sequential(
-            nn.Conv2d(in_ch, 32, 1, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(in_ch, 16, 1, padding=1),
+            nn.BatchNorm2d(16),
             nn.ReLU6(inplace=True)
         )
 
-        self.stage1 = LinearBottleNeck(32, 16, 1, 1)
-        self.stage2 = self._make_stage(2, 16, 24, 2, 6)
-        self.stage3 = self._make_stage(3, 24, 32, 2, 6)
-        self.stage4 = self._make_stage(4, 32, 64, 2, 6)
-        self.stage5 = self._make_stage(3, 64, 96, 1, 6)
-        self.stage6 = self._make_stage(3, 96, 160, 1, 6)
-        self.stage7 = LinearBottleNeck(160, 320, 1, 6)
+        self.stage1 = LinearBottleNeck(16, 8, 1, 1)
+        self.stage2 = self._make_stage(2, 8, 24, 2, 6)
+        self.stage3 = self._make_stage(3, 24, 16, 2, 6)
+        self.stage4 = self._make_stage(4, 16, 32, 2, 6)
+        self.stage5 = self._make_stage(3, 32, 48, 1, 6)
+        self.stage6 = self._make_stage(3, 48, 80, 1, 6)
+        self.stage7 = LinearBottleNeck(80, 160, 1, 6)
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(320, 1280, 1),
-            nn.BatchNorm2d(1280),
+            nn.Conv2d(160, 640, 1),
+            nn.BatchNorm2d(640),
             nn.ReLU6(inplace=True)
         )
 
-        self.conv2 = nn.Conv2d(1280, num_classes, 1)
+        self.conv2 = nn.Conv2d(640, num_classes, 1)
 
     def forward(self, x):
         x = self.pre(x)

@@ -50,22 +50,22 @@ class SqueezeNet(nn.Module):
     def __init__(self, in_ch, num_classes):
         super().__init__()
         self.stem = nn.Sequential(
-            nn.Conv2d(in_ch, 96, 3, padding=1),
-            nn.BatchNorm2d(96),
+            nn.Conv2d(in_ch, 24, 3, padding=1),
+            nn.BatchNorm2d(24),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2)
         )
 
-        self.fire2 = Fire(96, 128, 16)
-        self.fire3 = Fire(128, 128, 16)
-        self.fire4 = Fire(128, 256, 32)
-        self.fire5 = Fire(256, 256, 32)
-        self.fire6 = Fire(256, 384, 48)
-        self.fire7 = Fire(384, 384, 48)
-        self.fire8 = Fire(384, 512, 64)
-        self.fire9 = Fire(512, 512, 64)
+        self.fire2 = Fire(24, 32, 8)
+        self.fire3 = Fire(32, 32, 8)
+        self.fire4 = Fire(32, 64, 16)
+        self.fire5 = Fire(64, 64, 16)
+        self.fire6 = Fire(64, 96, 24)
+        self.fire7 = Fire(96, 96, 24)
+        self.fire8 = Fire(96, 128, 32)
+        self.fire9 = Fire(128, 128, 32)
 
-        self.conv10 = nn.Conv2d(512, num_classes, 1)
+        self.conv10 = nn.Conv2d(128, num_classes, 1)
         self.avg = nn.AdaptiveAvgPool2d(1)
         self.maxpool = nn.MaxPool2d(2, 2)
 
