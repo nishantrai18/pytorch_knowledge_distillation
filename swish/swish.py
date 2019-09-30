@@ -1,3 +1,4 @@
+import math
 import torch
 import unittest
 import swish_cpp
@@ -76,20 +77,19 @@ class TestBasicSwishTraining(unittest.TestCase):
         """
         pass
 
-    def target_func_1(self, x):
-        return x * F.sigmoid(x)
+    def target_func_bx(self, b):
+        def target_func_curried(x):
+            return x * F.sigmoid(b * x)
 
-    def target_func_2(self, x):
-        return x
+        return target_func_curried
 
-    def target_func_3(self, x):
-        return x * F.sigmoid(2.5 * x)
+    def run_training_for_instance(self, b):
 
-    def run_training_for_instance(self, target_func):
+        target_func = self.target_func_bx(b)
 
         num_epochs = 1000
 
-        inputs = torch.randn(20, requires_grad=False)
+        inputs = torch.randn(50, requires_grad=False) * 5.0
 
         swish = Swish()
         loss_fn = nn.SmoothL1Loss()
@@ -114,12 +114,15 @@ class TestBasicSwishTraining(unittest.TestCase):
             })
 
         print("Learned values:", list(swish.parameters()))
+        assert abs(swish.beta.item() - b) < 0.25, "Unable to learn: {}".format(b)
 
     def test_basic_training(self):
 
-        self.run_training_for_instance(self.target_func_1)
-        self.run_training_for_instance(self.target_func_2)
-        self.run_training_for_instance(self.target_func_3)
+        self.run_training_for_instance(-1.0)
+        self.run_training_for_instance(1.0)
+        self.run_training_for_instance(0.5)
+        self.run_training_for_instance(0.0)
+        self.run_training_for_instance(0.1)
 
 
 if __name__ == "__main__":
