@@ -4,6 +4,23 @@ import torch
 from tqdm import tqdm
 
 
+def move_dict_to_device(data_dict, device):
+    """
+    Assumes that the values in the data_dict have .to(device)
+    defined on them
+    """
+    for k in data_dict.keys():
+        data_dict[k] = data_dict[k].to(device)
+    return data_dict
+
+
+def move_to_device(data, device):
+    if type(data) == dict:
+        return move_dict_to_device(data, device)
+    else:
+        return data.to(device)
+
+
 class ModelTrainer(object):
 
     def __init__(
@@ -39,7 +56,7 @@ class ModelTrainer(object):
         tq = tqdm(self.train_loader, desc="Steps within train epoch {}:".format(epoch))
 
         for batch_idx, (data, target) in enumerate(tq):
-            data, target = data.to(self.device), target.to(self.device)
+            data, target = move_to_device(data, self.device), target.to(self.device)
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.model.train_loss(output, target)

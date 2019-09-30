@@ -1,3 +1,4 @@
+import cached_dataset
 import dataset_utils
 import glob
 import os
@@ -6,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from kd_module import IndividualModel, OnTheFlyKDModel
+from model_wrapper import IndividualModel, OnTheFlyKDModel
 from models.basenet import BaseNet
 from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
@@ -82,6 +83,24 @@ def load_pretrained_ckpt_if_exists(model, model_save_dir):
     return model, epoch
 
 
+def perform_training(model, train_loader, test_loader, model_save_dir, args):
+    """
+    General utility to perform training of the passed model
+    """
+
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    model_trainer = ModelTrainer(model, DEVICE, train_loader, test_loader, optimizer)
+
+    for epoch in range(args.epochs):
+        # Perform train and test step
+        model_trainer.train_step(epoch)
+        model_trainer.test_step(ks=[1, 3, 5])
+
+        # Save model during each epoch
+        if args.save_model:
+            model_trainer.save_model(model_save_dir, epoch)
+
+
 def perform_single_model_training(args):
     """
     Helper function to perform training of a single specified model
@@ -102,22 +121,12 @@ def perform_single_model_training(args):
         model, existing_epoch = load_pretrained_ckpt_if_exists(model, model_save_dir)
 
     model = model.to(DEVICE)
+    model = IndividualModel(model)
 
-    wrapped_model = IndividualModel(model)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    model_trainer = ModelTrainer(wrapped_model, DEVICE, train_loader, test_loader, optimizer)
-
-    for epoch in range(existing_epoch, args.epochs):
-        # Perform train and test step
-        model_trainer.train_step(epoch)
-        model_trainer.test_step(ks=[1, 3, 5])
-
-        # Save model during each epoch
-        if args.save_model:
-            model_trainer.save_model(model_save_dir, epoch)
+    perform_training(model, train_loader, test_loader, model_save_dir, args)
 
 
-def perform_knowledge_distillation(args):
+def perform_knowledge_distillation_on_the_fly(args):
     """
     Helper function to perform knowledge distillation using the specified students and teachers
 
@@ -126,25 +135,30 @@ def perform_knowledge_distillation(args):
 
     train_loader, test_loader = dataset_utils.fetch_cifar100_dataloaders(args)
 
-    model_save_dir = os.path.join(args.model_dir, args.student_model + "_kd_" + args.notes)
+    model_save_dir = os.path.join(args.model_dir, args.student_model + "_otf_kd_" + args.notes)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
 
     student = fetch_specified_model(args.student_model).to(DEVICE)
     student = IndividualModel(student)
     teacher = fetch_pretrained_model(args.teacher_ckpt_pth).to(DEVICE)
-
     model = OnTheFlyKDModel(student, teacher, args)
-    model = model.to(DEVICE)
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    model_trainer = ModelTrainer(model, DEVICE, train_loader, test_loader, optimizer)
+    perform_training(model, train_loader, test_loader, model_save_dir, args)
 
-    for epoch in range(args.epochs):
-        # Perform train and test step
-        model_trainer.train_step(epoch)
-        model_trainer.test_step(ks=[1, 3, 5])
 
-        # Save model during each epoch
-        if args.save_model:
-            model_trainer.save_model(model_save_dir, epoch)
+def perform_cached_knowledge_distillation(args):
+    """
+    Similar to the above, but performs it using the cached benchmark
+    """
+
+    train_loader, test_loader = cached_dataset.fetch_cifar100_efficient_kd_dataloaders(args)
+
+    model_save_dir = os.path.join(args.model_dir, args.student_model + "_cached_kd_" + args.notes)
+    if not os.path.exists(model_save_dir):
+        os.makedirs(model_save_dir)
+
+    student = fetch_specified_model(args.student_model).to(DEVICE)
+    student = IndividualModel(student)
+
+    perform_training(student, train_loader, test_loader, model_save_dir, args)

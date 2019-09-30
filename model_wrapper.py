@@ -57,43 +57,16 @@ class IndividualModel(ModelWrapper):
         return self.test_loss_criterion(result["outs"], labels)
 
 
-class OnTheFlyKDModel(ModelWrapper):
+class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
 
-    def __init__(self, student, teacher, args):
-        """
-        Init KD object. Note that the models passed should be instances
-        of ModelWrapper
+    def __init__(self, args):
+        super(KnowledgeDistillModelWrapper, self).__init__()
 
-        :param student: Base student model to be trained
-        :param teacher: Pre-trained teacher model (Frozen)
-        """
-
-        super(OnTheFlyKDModel, self).__init__()
-
-        # Init base models
         self.args = args
-        self.student = student
-        self.teacher = teacher
 
         # Hyper-parameters for Knowledge distillation
         self.temperature = args.temperature
         self.kd_weight = args.kd_weight
-
-        # Freeze the teacher module in order to avoid training it
-        for param in self.teacher.parameters():
-            param.requires_grad = False
-
-    def forward(self, x):
-        student_res = self.student(x)
-        teacher_res = self.teacher(x)
-
-        # Naming student results without prefix for compatibility
-        return {
-            "outs": student_res["outs"],
-            "preds": student_res["preds"],
-            "teacher_outs": teacher_res["outs"],
-            "teacher_preds": teacher_res["preds"],
-        }
 
     def loss_criterion(self, result, labels):
         """
@@ -123,3 +96,72 @@ class OnTheFlyKDModel(ModelWrapper):
     def test_loss(self, result, labels):
         # Need to multiply to preserve correct values after the mean
         return self.loss_criterion(result, labels) * self.args.batch_size
+
+
+class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
+    """
+    Implementation of on the fly knowledge distill model
+    """
+
+    def __init__(self, student, teacher, args):
+        """
+        Init KD object. Note that the models passed should be instances
+        of ModelWrapper
+
+        :param student: Base student model to be trained
+        :param teacher: Pre-trained teacher model (Frozen)
+        """
+
+        super(OnTheFlyKDModel, self).__init__(args)
+
+        # Init base models
+        self.student = student
+        self.teacher = teacher
+
+        # Freeze the teacher module in order to avoid training it
+        for param in self.teacher.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        student_res = self.student(x)
+        teacher_res = self.teacher(x)
+
+        # Naming student results without prefix for compatibility
+        return {
+            "outs": student_res["outs"],
+            "teacher_outs": teacher_res["outs"]
+        }
+
+
+class CachedKDModel(KnowledgeDistillModelWrapper):
+    """
+    Implementation of efficient cached knowledge distill model
+    Note that the dataloaders returned by,
+        fetch_cifar100_efficient_kd_dataloaders()
+    should be used in conjunction with this
+    """
+
+    def __init__(self, student, teachers, args):
+        """
+        Init KD object. Note that the models passed should be instances
+        of ModelWrapper
+
+        :param student: Base student model to be trained
+        :param teachers: Names of teachers to use
+        """
+
+        super(CachedKDModel, self).__init__(args)
+
+        # Init base models
+        self.student = student
+        self.teachers = teachers
+
+    def forward(self, x):
+        student_res = self.student(x["data"])
+        # Compute the average output for all the teachers
+        teacher_res = torch.mean(torch.stack([v for k, v in x.items() if 'model_out_' in k]))
+
+        return {
+            "outs": student_res["outs"],
+            "teacher_outs": teacher_res
+        }

@@ -81,7 +81,8 @@ def dict_collate(data):
     for k in add_data_keys:
         collected_data[k] = torch.cat(collected_data[k], 0)
 
-    return collected_data
+    # Passing redundant information for compatibility
+    return collected_data, collected_data["target"]
 
 
 class CachedKDDataset(torch.utils.data.Dataset):
@@ -89,11 +90,7 @@ class CachedKDDataset(torch.utils.data.Dataset):
     Dataset class for efficient KD task
     """
 
-    def __init__(self, mode):
-        """
-        :param mode: Train or test
-        """
-
+    def __init__(self, mode="train"):
         super(CachedKDDataset, self).__init__()
 
         self.data_dir = os.path.join("../data/cifar100_cached/", mode)
@@ -173,10 +170,11 @@ class TestCachedDataloader(unittest.TestCase):
 
         v = ["data", "target", "model_out_sqnet"]
 
-        for data in self.train_loader:
+        for data, target in self.train_loader:
             b, c, h, w = data[v[0]].shape
             assert data[v[1]].shape == (b, )
             assert data[v[2]].shape == (b, 100)
+            assert data[v[1]].shape == target.shape
 
 
 if __name__ == "__main__":
