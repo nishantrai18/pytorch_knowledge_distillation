@@ -66,6 +66,8 @@ class ModelTrainer(object):
         tq = tqdm(self.train_loader, desc="Steps within train epoch {}:".format(epoch))
 
         for batch_idx, (data, target) in enumerate(tq):
+            tq.set_postfix(**self.metric_logger.fetch_tqdm_postfix_metrics())
+
             data, target = move_to_device(data, self.device), target.to(self.device)
 
             self.optimizer.zero_grad()
@@ -79,8 +81,6 @@ class ModelTrainer(object):
 
             loss.backward()
             self.optimizer.step()
-
-            tq.set_postfix(**self.metric_logger.fetch_tqdm_postfix_metrics())
 
     def test_step(self, ks=[1, 5]):
         """

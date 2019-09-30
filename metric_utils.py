@@ -4,6 +4,10 @@ import torch
 from tensorboardX import SummaryWriter
 
 
+# Constants
+eps = 1e-12
+
+
 class MetricTracker(object):
     def __init__(self, log_dir, ks=[1, 5], log_frequency=50, starting_step=0):
         self.logger = SummaryWriter(log_dir=log_dir)
@@ -34,6 +38,17 @@ class MetricTracker(object):
         for metric in self.metrics_tracked:
             self.metrics[metric] = 0
 
+    def init_losses(self, **kwargs):
+        self.losses = {k: v.item() for k, v in kwargs.items()}
+
+    def reset_metrics(self):
+        for k in self.metrics.keys():
+            self.metrics[k] = 0
+
+    def reset_losses(self):
+        for k in self.losses.keys():
+            self.losses[k] = 0
+
     def new_epoch(self, phase):
         if self.losses is not None:
             # Means it's not first epoch
@@ -44,9 +59,6 @@ class MetricTracker(object):
 
     def update_batch_size(self, batch_size):
         self.batch_size = batch_size
-
-    def init_losses(self, **kwargs):
-        self.losses = {k: v.item() for k, v in kwargs.items()}
 
     def update_losses(self, **kwargs):
         """
@@ -74,9 +86,12 @@ class MetricTracker(object):
         for metric in self.metrics.keys():
             if metric[:3] == 'top':
                 k = int(metric.replace('top', '').split('_')[0])
-                self.metrics[metric] += correct_top_ks[k] * self.batch_size
+                self.metrics[metric] += correct_top_ks[k]
 
         self.inputs_seen_so_far += self.batch_size
+
+        print("inputs_so_far", self.inputs_seen_so_far)
+        print("batch_size", self.inputs_seen_so_far)
         self.step += 1
 
         if self.step % self.log_frequency == 0:
@@ -103,12 +118,16 @@ class MetricTracker(object):
         self.logger.add_scalar(phase + "/Time", (time.time() - self.start_time) * 100 / self.log_frequency, self.step)
         self.start_time = time.time()
 
+        self.reset_losses()
+        self.reset_metrics()
+        self.inputs_seen_so_far = 0
+
     def fetch_tqdm_postfix_metrics(self):
         postfix_stats = {}
         for k, v in self.postfix_losses_list.items():
-            postfix_stats[k] = round(self.losses[v] / self.inputs_seen_so_far, 3)
+            postfix_stats[k] = round(self.losses[v] / (self.inputs_seen_so_far + eps), 3)
         for k, v in self.postfix_metrics_list.items():
-            postfix_stats[k] = round(self.metrics[v] / self.inputs_seen_so_far, 3)
+            postfix_stats[k] = round(self.metrics[v] / (self.inputs_seen_so_far + eps), 3)
         return postfix_stats
 
     def update_visuals(self, results):
