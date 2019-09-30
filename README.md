@@ -55,6 +55,6 @@ Use the following commands to generate new cached datasets,
 
 	> python cached_dataset.py
 
-#Other notes
+# Other notes
 
 **swish/** contains pre-compiled binaries in order to allow out-of-the-box execution
