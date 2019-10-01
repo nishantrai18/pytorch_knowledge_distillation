@@ -66,21 +66,21 @@ class ModelTrainer(object):
         tq = tqdm(self.train_loader, desc="Steps within train epoch {}:".format(epoch))
 
         for batch_idx, (data, target) in enumerate(tq):
-            tq.set_postfix(**self.metric_logger.fetch_tqdm_postfix_metrics())
-
             data, target = move_to_device(data, self.device), target.to(self.device)
 
             self.optimizer.zero_grad()
             output = self.model(data)
-            loss = self.model.train_loss(output, target)
+            loss_dict = self.model.train_loss(output, target)
 
             # Batch size can be different for last step
             self.metric_logger.update_batch_size(data.shape[0])
-            self.metric_logger.update_losses(loss=loss)
+            self.metric_logger.update_losses(**loss_dict)
             self.metric_logger.update_metrics(output, target)
 
-            loss.backward()
+            loss_dict["loss"].backward()
             self.optimizer.step()
+
+            tq.set_postfix(**self.metric_logger.fetch_tqdm_postfix_metrics())
 
     def test_step(self, ks=[1, 5]):
         """
@@ -99,7 +99,7 @@ class ModelTrainer(object):
                 data, target = move_to_device(data, self.device), target.to(self.device)
                 output = self.model(data)
                 # sum up batch loss
-                test_loss += self.model.test_loss(output, target).item()
+                test_loss += self.model.test_loss(output, target)["loss"].item()
                 # get the probable classes
                 preds = torch.topk(output["preds"], k=max(ks))[1]
                 corrects = preds.eq(target.view(-1, 1).expand_as(preds))

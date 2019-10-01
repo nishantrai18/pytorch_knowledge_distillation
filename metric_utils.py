@@ -89,9 +89,6 @@ class MetricTracker(object):
                 self.metrics[metric] += correct_top_ks[k]
 
         self.inputs_seen_so_far += self.batch_size
-
-        print("inputs_so_far", self.inputs_seen_so_far)
-        print("batch_size", self.inputs_seen_so_far)
         self.step += 1
 
         if self.step % self.log_frequency == 0:

@@ -71,10 +71,14 @@ class IndividualModel(ModelWrapper):
         }
 
     def train_loss(self, result, labels):
-        return self.train_loss_criterion(result["outs"], labels)
+        return {
+            "loss": self.train_loss_criterion(result["outs"], labels)
+        }
 
     def test_loss(self, result, labels):
-        return self.test_loss_criterion(result["outs"], labels)
+        return {
+            "loss": self.test_loss_criterion(result["outs"], labels)
+        }
 
 
 class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
@@ -108,14 +112,20 @@ class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
         # Weigh kd_loss with t^2 to preserve scale of gradients
         final_loss = (kd_loss * w * t * t) + (gt_loss * (1 - w))
 
-        return final_loss
+        return {
+            "loss": final_loss,
+            "gt_loss": gt_loss,
+            "kd_loss": kd_loss
+        }
 
     def train_loss(self, result, labels):
         return self.loss_criterion(result, labels)
 
     def test_loss(self, result, labels):
         # Need to multiply to preserve correct values after the mean
-        return self.loss_criterion(result, labels) * self.args.batch_size
+        return {
+            k: v * self.args.batch_size for k, v in self.loss_criterion(result, labels).items()
+        }
 
 
 class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
