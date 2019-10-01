@@ -23,19 +23,18 @@ class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, act_fact, stride=1):
         super().__init__()
 
-        self.act_fact = act_fact
-
         # residual function
         self.residual_function = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            self.act_fact(),
+            act_fact(),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels)
         )
 
         # shortcut
         self.shortcut = nn.Sequential()
+        self.activation = act_fact()
 
         # the shortcut output dimension is not the same with residual function
         # use 1*1 convolution to match the dimension
@@ -46,7 +45,7 @@ class BasicBlock(nn.Module):
             )
 
     def forward(self, x):
-        return self.act_fact()(self.residual_function(x) + self.shortcut(x))
+        return self.activation(self.residual_function(x) + self.shortcut(x))
 
 
 class ResNet(nn.Module):
@@ -62,14 +61,14 @@ class ResNet(nn.Module):
             act_fact())
         # we use a different inputsize than the original paper
         # so conv2_x's stride is 1
-        self.conv2_x = self._make_layer(block, 16, num_block[0], 1)
-        self.conv3_x = self._make_layer(block, 32, num_block[1], 2)
-        self.conv4_x = self._make_layer(block, 64, num_block[2], 2)
-        self.conv5_x = self._make_layer(block, 128, num_block[3], 2)
+        self.conv2_x = self._make_layer(block, 16, num_block[0], act_fact, 1)
+        self.conv3_x = self._make_layer(block, 32, num_block[1], act_fact, 2)
+        self.conv4_x = self._make_layer(block, 64, num_block[2], act_fact, 2)
+        self.conv5_x = self._make_layer(block, 128, num_block[3], act_fact, 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(128 * block.expansion, num_classes)
 
-    def _make_layer(self, block, out_channels, num_blocks, stride):
+    def _make_layer(self, block, out_channels, num_blocks, act_fact, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
         same as a neuron netowork layer, ex. conv layer), one layer may
         contain more than one residual block
@@ -89,7 +88,7 @@ class ResNet(nn.Module):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
-            layers.append(block(self.in_channels, out_channels, stride))
+            layers.append(block(self.in_channels, out_channels, act_fact, stride))
             self.in_channels = out_channels * block.expansion
 
         return nn.Sequential(*layers)

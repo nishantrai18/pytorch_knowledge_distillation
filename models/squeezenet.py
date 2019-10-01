@@ -17,24 +17,22 @@ class Fire(nn.Module):
     def __init__(self, in_channel, out_channel, squzee_channel, act_fact):
         super().__init__()
 
-        self.act_fact = act_fact
-
         self.squeeze = nn.Sequential(
             nn.Conv2d(in_channel, squzee_channel, 1),
             nn.BatchNorm2d(squzee_channel),
-            self.act_fact()
+            act_fact()
         )
 
         self.expand_1x1 = nn.Sequential(
             nn.Conv2d(squzee_channel, int(out_channel / 2), 1),
             nn.BatchNorm2d(int(out_channel / 2)),
-            self.act_fact()
+            act_fact()
         )
 
         self.expand_3x3 = nn.Sequential(
             nn.Conv2d(squzee_channel, int(out_channel / 2), 3, padding=1),
             nn.BatchNorm2d(int(out_channel / 2)),
-            self.act_fact()
+            act_fact()
         )
 
     def forward(self, x):
@@ -53,12 +51,10 @@ class SqueezeNet(nn.Module):
     def __init__(self, in_ch, num_classes, act_fact):
         super().__init__()
 
-        self.act_fact = act_fact
-
         self.stem = nn.Sequential(
             nn.Conv2d(in_ch, 24, 3, padding=1),
             nn.BatchNorm2d(24),
-            self.act_fact(),
+            act_fact(),
             nn.MaxPool2d(2, 2)
         )
 

@@ -55,7 +55,6 @@ class MetricTracker(object):
             self.log_current_metrics()
         self.reset_epoch_counters()
         self.phase = phase
-        self.step_in_epoch = 0
 
     def update_batch_size(self, batch_size):
         self.batch_size = batch_size
@@ -99,7 +98,6 @@ class MetricTracker(object):
             for k, v in self.losses.items():
                 self.losses[k] = 0
         self.init_metrics()
-        self.step_in_epoch = 0
         self.inputs_seen_so_far = 0
         self.start_time = time.time()
 
