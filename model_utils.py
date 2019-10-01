@@ -76,6 +76,7 @@ class ModelTrainer(object):
             self.metric_logger.update_batch_size(data.shape[0])
             self.metric_logger.update_losses(**loss_dict)
             self.metric_logger.update_metrics(output, target)
+            self.metric_logger.update_visuals(self.model)
 
             loss_dict["loss"].backward()
             self.optimizer.step()

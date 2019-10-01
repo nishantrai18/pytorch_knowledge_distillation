@@ -127,29 +127,26 @@ class MetricTracker(object):
             postfix_stats[k] = round(self.metrics[v] / (self.inputs_seen_so_far + eps), 3)
         return postfix_stats
 
-    def update_visuals(self, results):
+    def update_visuals(self, model):
         """
         Handles updation of visuals generated during training. currently only includes histogram logging.
         Can be used for network activations, etc
         """
 
         # Log visuals much less frequently compared to scalar metrics
-        if self.step % (10 * self.log_frequency) == 0:
-            self.add_histograms(
-                self.logger,
-                self.phase,
-                results["uv_outputs"].detach(),
-                self.step
-            )
+        if self.step % self.log_frequency == 0:
+            self.add_beta_histograms(model)
 
-    def add_histograms(self, phase, uv_outs, step):
+    def add_beta_histograms(self, model):
         """
-        Logs histograms to represent the distribution of various metrics
-        :param uv_outs: UV predictions for the given image
+        Logs histograms to represent the distribution of beta in swish (note: can be generalized)
         """
 
-        assert uv_outs.shape[1] == 2, "Actual shape: {}".format(uv_outs.shape)
+        phase = self.phase.title()
 
-        phase = phase.title()
+        beta_val = []
+        for n, p in model.named_parameters():
+            if p.requires_grad and ("beta" in n):
+                beta_val.append(p.item())
 
-        self.logger.add_histogram(phase + "/swish_beta", uv_outs[:, 0, ...], step)
+        self.logger.add_histogram(phase + "/swish_beta", beta_val, self.step)
