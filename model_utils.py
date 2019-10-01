@@ -109,6 +109,13 @@ class ModelTrainer(object):
 
         test_loss /= len(self.test_loader.dataset)
 
+        metrics = {
+            "top" + str(k) + "_acc": correct_top_ks[k] / len(self.test_loader.dataset) for k in ks
+        }
+        metrics["loss"] = test_loss
+
+        self.metric_logger.log_test_metrics(**metrics)
+
         # Print relevant stats
         print("Test set: Average loss: {:.4f}".format(test_loss))
         for k in ks:

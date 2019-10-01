@@ -12,6 +12,8 @@ class MetricTracker(object):
     def __init__(self, log_dir, ks=[1, 5], log_frequency=50, starting_step=0):
         self.logger = SummaryWriter(log_dir=log_dir)
         self.step = starting_step
+        self.test_step = 0
+
         self.metrics = {}
         self.num_classes = 100
         self.ks = ks
@@ -117,6 +119,14 @@ class MetricTracker(object):
         self.reset_metrics()
         self.inputs_seen_so_far = 0
 
+    def log_test_metrics(self, **kwargs):
+        phase = "test".title()
+
+        for name, value in kwargs.items():
+            self.logger.add_scalar(phase + "/" + name, value, self.test_step)
+
+        self.test_step += 1
+
     def fetch_tqdm_postfix_metrics(self):
         postfix_stats = {}
         for k, v in self.postfix_losses_list.items():
@@ -147,4 +157,5 @@ class MetricTracker(object):
             if p.requires_grad and ("beta" in n):
                 beta_val.append(p.item())
 
-        self.logger.add_histogram(phase + "/swish_beta", beta_val, self.step)
+        if len(beta_val) > 0:
+            self.logger.add_histogram(phase + "/swish_beta", beta_val, self.step)
