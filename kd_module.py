@@ -107,7 +107,7 @@ class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
         gt_loss = F.cross_entropy(result["outs"], labels)
 
         # Weird way to get 0 tensor
-        kd_loss = gt_loss * 0.0
+        kd_loss = gt_loss.detach() * 0.0
 
         for v in result["teacher_out_list"]:
             # Multiplying by 100 to keep losses roughly comparable

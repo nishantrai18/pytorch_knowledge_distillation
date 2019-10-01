@@ -158,7 +158,7 @@ def perform_cached_knowledge_distillation(args):
 
     train_loader, test_loader = cached_dataset.fetch_cifar100_efficient_kd_dataloaders(args)
 
-    model_name = args.student_model + "_" + args.activation + "_cached_kd_" + args.notes
+    model_name = args.student_model + "_" + args.activation + "_cached_kd_" + args.teachers + "_" + args.notes
     model_save_dir = os.path.join(args.model_dir, model_name)
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir)
