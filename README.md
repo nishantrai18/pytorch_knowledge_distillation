@@ -32,24 +32,35 @@ We also have helper utility and classes to supplement the driver scripts
 
 Use the following commands to get started with training,
 
-```
-// Train base net in a straight-forward way with Swish activation
-> python main.py --task base_tr --base-model basenet --activation swish 
+Train base net in a straight-forward way with Swish activation
+    
+    >  python main.py --task base_tr --base-model basenet --activation swish 
     --perform-data-aug True --notes 30sep --epochs 30
-// Train resnet18 in a straight-forward way with relu activation
-> python main.py --task base_tr --base-model resnet18 --activation relu
+
+Train resnet18 in a straight-forward way with relu activation
+
+    > python main.py --task base_tr --base-model resnet18 --activation relu
     --perform-data-aug True --notes 30sep --epochs 30
-// Perform on the fly knowledge distillation with simple basenet studet model and a provided teacher checkpoint
-> python main.py  --task kd_otf --student-model basenet --activation relu
+
+Perform on the fly knowledge distillation with simple basenet student model and a provided teacher checkpoint
+
+    > python main.py  --task kd_otf --student-model basenet --activation relu
     --teacher-ckpt-pth ../model_ckpt/resnet18_init/cifar100_9.pt
     --temperature 1.0 --kd-weight 0.5
     --perform-data-aug True --notes 30sep --epochs 30
-// Perform cached knowledge distillation with an ensemble of teachers
-> python main.py  --task kd_cached --student-model basenet --activation relu
-    --teachers resnet18_sqnet_mobnet2
+
+Perform cached knowledge distillation with an ensemble of teachers
+
+    > python main.py  --task kd_cached --student-model basenet --activation relu
+    --teachers resnet18.sw_sqnet.sw
     --temperature 1.0 --kd-weight 0.5
     --perform-data-aug True --notes 30sep --epochs 30
-```
+
+Perform cached knowledge distillation with auto-weighing losses
+
+    > python main.py  --task kd_cached --student-model basenet --activation swish
+    --teachers resnet18.sw --temperature 1.0 --perform-data-aug True --notes 30sep
+    --auto-weigh true
 
 Use the following commands to generate new cached datasets,
 
