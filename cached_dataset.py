@@ -119,8 +119,11 @@ def create_cached_dataset():
 
     device = torch.device("cpu")
     model_pths = {
-        "sqnet": "../model_ckpt/sqnet_with_aug/cifar100_3.pt"
+        "sqnet.sw": "../model_ckpt/sqnet_swish_base_swish_30sep/cifar100_9.pt",
+        "resnet18.sw": "../model_ckpt/resnet18_swish_base_swish_30sep/cifar100_9.pt",
+        "resnet18.re": "../model_ckpt/resnet18_relu_base_relu_30sep/cifar100_9.pt"
     }
+    # "resnet34.re": "../model_ckpt/resnet34_fresh_30sep/cifar100_30.pt"
 
     cacher = DatasetCacher(model_pths, device)
 
@@ -154,6 +157,7 @@ def fetch_cifar100_efficient_kd_dataloaders(args):
 
 
 class TestCachedDataloader(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         args = argparse.Namespace(batch_size=64)
@@ -178,5 +182,5 @@ class TestCachedDataloader(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
-    # create_cached_dataset()
+    # unittest.main()
+    create_cached_dataset()

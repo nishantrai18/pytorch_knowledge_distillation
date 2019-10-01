@@ -143,19 +143,22 @@ class MetricTracker(object):
 
         # Log visuals much less frequently compared to scalar metrics
         if self.step % self.log_frequency == 0:
-            self.add_beta_histograms(model)
+            self.add_named_var_histograms(model, "beta")
+            # Calls below are for auto weighing params
+            self.add_named_var_histograms(model, "auto_param_0")
+            self.add_named_var_histograms(model, "auto_param_1")
 
-    def add_beta_histograms(self, model):
+    def add_named_var_histograms(self, model, name):
         """
         Logs histograms to represent the distribution of beta in swish (note: can be generalized)
         """
 
         phase = self.phase.title()
 
-        beta_val = []
+        name_param_val = []
         for n, p in model.named_parameters():
-            if p.requires_grad and ("beta" in n):
-                beta_val.append(p.item())
+            if p.requires_grad and (name in n):
+                name_param_val.append(p.item())
 
-        if len(beta_val) > 0:
-            self.logger.add_histogram(phase + "/swish_beta", beta_val, self.step)
+        if len(name_param_val) > 0:
+            self.logger.add_histogram(phase + "/" + name, name_param_val, self.step)

@@ -73,7 +73,7 @@ class ModelTrainer(object):
             loss_dict = self.model.train_loss(output, target)
 
             # Batch size can be different for last step
-            self.metric_logger.update_batch_size(data.shape[0])
+            self.metric_logger.update_batch_size(target.shape[0])
             self.metric_logger.update_losses(**loss_dict)
             self.metric_logger.update_metrics(output, target)
             self.metric_logger.update_visuals(self.model)

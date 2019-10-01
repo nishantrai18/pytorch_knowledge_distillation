@@ -8,6 +8,7 @@ import torch
 
 import torch.nn as nn
 import torch.nn.functional as F
+import weighed_loss as wl
 
 from abc import ABC, abstractmethod
 from swish.swish import Swish
@@ -103,11 +104,19 @@ class KnowledgeDistillModelWrapper(ModelWrapper, ABC):
         w = self.kd_weight
         t = self.temperature
 
-        kd_loss = nn.KLDivLoss()(
-            F.log_softmax(result["outs"] / t, dim=1),
-            F.softmax(result["teacher_outs"] / t, dim=1)
-        )
         gt_loss = F.cross_entropy(result["outs"], labels)
+
+        # Weird way to get 0 tensor
+        kd_loss = gt_loss * 0.0
+
+        for v in result["teacher_out_list"]:
+            # Multiplying by 100 to keep losses roughly comparable
+            kd_loss += nn.KLDivLoss()(
+                F.log_softmax(result["outs"] / t, dim=1),
+                F.softmax(v / t, dim=1)
+            ) * 100.0
+
+        kd_loss /= len(result["teacher_out_list"])
 
         # Weigh kd_loss with t^2 to preserve scale of gradients
         final_loss = (kd_loss * w * t * t) + (gt_loss * (1 - w))
@@ -160,7 +169,7 @@ class OnTheFlyKDModel(KnowledgeDistillModelWrapper):
         return {
             "outs": student_res["outs"],
             "preds": student_res["preds"],
-            "teacher_outs": teacher_res["outs"]
+            "teacher_out_list": [teacher_res["outs"]]
         }
 
 
@@ -190,12 +199,33 @@ class CachedKDModel(KnowledgeDistillModelWrapper):
     def forward(self, x):
         student_res = self.student(x["data"])
         # Compute the average output for all the teachers
-        valid_teacher_res = \
+        valid_teacher_res_list = \
             [v for k, v in x.items() if 'model_out_' in k and k.replace('model_out_', '') in self.teachers]
-        teacher_res = torch.mean(torch.stack(valid_teacher_res), dim=0)
 
         return {
             "outs": student_res["outs"],
             "preds": student_res["preds"],
-            "teacher_outs": teacher_res
+            "teacher_out_list": valid_teacher_res_list
         }
+
+
+class CachedKDModelWithAutoWeighing(CachedKDModel):
+    """
+    Cached knowledge distill model with auto-weighing losses
+    """
+
+    def __init__(self, student, teachers, args, name):
+        super(CachedKDModelWithAutoWeighing, self).__init__(student, teachers, args, "cached_auto_" + name)
+
+        self.weighed_loss_criterion = wl.WeighedLoss(num_losses=2)
+
+    def loss_criterion(self, result, labels):
+
+        old_loss = super(CachedKDModelWithAutoWeighing, self).loss_criterion(result, labels)
+
+        loss = self.weighed_loss_criterion([old_loss["kd_loss"], old_loss["gt_loss"]])
+
+        new_loss = old_loss.copy()
+        new_loss["loss"] = loss
+
+        return new_loss

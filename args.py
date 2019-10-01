@@ -62,6 +62,14 @@ def get_args_parser_for_driver():
     parser.add_argument('--kd-variant', type=str, default="something",
                         help='specifies which variant of KD to use')
 
+    # Flags relevant during cached kd training
+    parser.add_argument('--teachers', type=str, default="",
+                        help='specifies which teachers to use for training. Must be separated by _')
+
+    # Whether to auto-learn loss weights
+    parser.add_argument('--auto-weigh', type=str2bool, default=False,
+                        help='specifies whether to auto-weigh')
+
     return parser
 
 

@@ -7,7 +7,8 @@ import torch
 import kd_module as kdm
 import torch.optim as optim
 
-from kd_module import IndividualModel, OnTheFlyKDModel, CachedKDModel
+from kd_module import \
+    IndividualModel, OnTheFlyKDModel, CachedKDModel, CachedKDModelWithAutoWeighing
 from models.basenet import BaseNet
 from models.resnet import ResNet18, ResNet34
 from models.mobilenetv2 import MobileNetV2
@@ -164,6 +165,12 @@ def perform_cached_knowledge_distillation(args):
 
     student = fetch_specified_model(args.student_model, args.activation).to(DEVICE)
     student = IndividualModel(student, name=args.student_model)
-    model = CachedKDModel(student, ["sqnet"], args, model_name)
+
+    teachers = args.teachers.split('_')
+
+    if args.auto_weigh:
+        model = CachedKDModelWithAutoWeighing(student, teachers, args, model_name)
+    else:
+        model = CachedKDModel(student, teachers, args, model_name)
 
     perform_training(model, train_loader, test_loader, model_save_dir, 0, args)
