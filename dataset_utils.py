@@ -9,7 +9,7 @@ from torchvision import datasets, transforms
 def add_data_augmentation(transform_list):
     # Add randomized cropping
     transform_list.append(
-        transforms.RandomResizedCrop((32, 32), scale=(0.8, 1.0), ratio=(0.98, 1.02))
+        transforms.RandomResizedCrop((32, 32), scale=(0.7, 1.0), ratio=(0.95, 1.05))
     )
     # Add random flipping
     transform_list.append(transforms.RandomHorizontalFlip())
